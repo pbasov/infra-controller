@@ -44,7 +44,14 @@ nodeExporter:
 # alongside otelcol-contrib (see bluefield/containers/transceiver-exporter).
 transceiverExporter:
   image:
-    repository: nvcr.io/0837451325059433/carbide-dev/transceiver-exporter
+    # Defaults to the sibling `transceiver-exporter` path next to
+    # image.repository — the two are published side by side in the same registry
+    # and namespace by the same CI run, so a mirrored install follows its mirror
+    # automatically instead of needing a per-site extra_helm_values overlay for
+    # the sidecar. NICo writes image.{repository,tag} from DpfServiceConfig
+    # (crates/api-core/src/dpf_services.rs); a registry hardcoded here does not
+    # follow it.
+    repository: ""
     # Defaults to the otelcol-contrib image tag (built in the same CI run).
     tag: ""
     pullPolicy: IfNotPresent

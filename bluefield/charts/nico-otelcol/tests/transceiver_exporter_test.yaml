@@ -2,17 +2,31 @@ suite: transceiver-exporter sidecar
 templates:
   - daemonset.yaml
 tests:
-  - it: should add the transceiver-exporter sidecar with the default image
+  - it: should add the transceiver-exporter sidecar as a sibling of the otelcol image
     template: daemonset.yaml
     set:
       image:
-        repository: test
+        repository: registry.example.com/ns/otelcol-contrib
         tag: v1.2.3
     asserts:
       - equal:
           path: spec.template.spec.containers[2].name
           value: transceiver-exporter
-      # tag defaults to the otelcol-contrib image tag when unset
+      # repository defaults to the sibling path, tag to the otelcol-contrib tag
+      - equal:
+          path: spec.template.spec.containers[2].image
+          value: registry.example.com/ns/transceiver-exporter:v1.2.3
+
+  # The canonical NGC render is unchanged by the derivation: otelcol-contrib and
+  # transceiver-exporter live side by side under DEFAULT_CARBIDE_IMAGE_REGISTRY
+  # (crates/api-core/src/dpf_services.rs), which is the path NICo writes.
+  - it: should resolve to the canonical NGC path for a canonical install
+    template: daemonset.yaml
+    set:
+      image:
+        repository: nvcr.io/0837451325059433/carbide-dev/otelcol-contrib
+        tag: v1.2.3
+    asserts:
       - equal:
           path: spec.template.spec.containers[2].image
           value: nvcr.io/0837451325059433/carbide-dev/transceiver-exporter:v1.2.3
@@ -21,11 +35,11 @@ tests:
     template: daemonset.yaml
     set:
       image:
-        repository: test
+        repository: registry.example.com/ns/otelcol-contrib
     asserts:
       - equal:
           path: spec.template.spec.containers[2].image
-          value: nvcr.io/0837451325059433/carbide-dev/transceiver-exporter:0.1.0
+          value: registry.example.com/ns/transceiver-exporter:0.1.0
 
   - it: should bind transceiver-exporter to loopback on the configured port
     template: daemonset.yaml

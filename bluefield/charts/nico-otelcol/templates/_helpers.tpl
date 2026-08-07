@@ -52,3 +52,33 @@ Prometheus scrape port (must match DPUServiceConfiguration configPorts in NICo d
 {{- define "nico-otelcol.prometheusPort" -}}
 {{- default 9999 .Values.prometheusPort -}}
 {{- end -}}
+
+{{/*
+transceiver-exporter sidecar image.
+
+transceiverExporter.image.repository wins when set. Otherwise the repository is
+derived from image.repository by swapping its trailing path segment for
+`transceiver-exporter`: the two images are published side by side in the same
+registry and namespace by the same CI run, so this resolves to the canonical NGC
+path for a canonical install and follows the mirror for a mirrored one.
+
+It is derived rather than hardcoded because NICo writes image.{repository,tag}
+into the DPUServiceTemplate values from DpfServiceConfig (otelcol_service,
+crates/api-core/src/dpf_services.rs), so a deployment that mirrors the images
+gets otelcol-contrib from its mirror but a hardcoded sidecar default from a
+registry it may not be able to reach. That is not cosmetic: the sidecar 403s and
+never starts, the DPUService never releases its DPUNodeMaintenance requestor,
+and the DPU wedges rather than failing cleanly. Deriving the path makes the
+sidecar follow otelcol-contrib without a per-site extra_helm_values overlay.
+
+The tag falls back to image.tag and then the chart appVersion, matching the
+otelcol-contrib container.
+*/}}
+{{- define "nico-otelcol.transceiverExporterImage" -}}
+{{- $repository := .Values.transceiverExporter.image.repository -}}
+{{- if not $repository -}}
+{{- $repository = regexReplaceAll "[^/]+$" .Values.image.repository "transceiver-exporter" -}}
+{{- end -}}
+{{- $tag := .Values.transceiverExporter.image.tag | default .Values.image.tag | default .Chart.AppVersion -}}
+{{- printf "%s:%s" $repository $tag -}}
+{{- end -}}
